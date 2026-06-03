@@ -19,8 +19,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pydantic python-dotenv langchain langgraph langchain-core langchain-openai langchain-community langchain-chroma langchain-tavily langchain-text-splitters langchain-huggingface chromadb sentence-transformers rank-bm25 jieba pandas fastapi uvicorn streamlit requests playwright beautifulsoup4
+          pip install pytest pydantic python-dotenv
+          pip install langchain langgraph langchain-core langchain-openai
+          pip install langchain-community langchain-text-splitters langchain-chroma
+          pip install chromadb rank-bm25 jieba pandas
+          pip install fastapi uvicorn streamlit requests
+          pip install sentence-transformers
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=line 2>&1 | head -80
