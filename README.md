@@ -283,8 +283,6 @@ jobsense/
 │   ├── graph.py                # 混合架构编排 (ReAct+Plan-Execute)
 │   ├── state.py                # AgentState 定义
 │   ├── memory.py               # 对话记忆
-│   ├── routers/intent_router.py # 意图路由
-│   ├── nodes/                  # 各节点实现
 │   └── tools/                  # 8 个 LangChain @tool
 │       ├── tools.py            # 6个内置工具
 │       ├── mcp_bridge.py       # MCP 协议桥接
@@ -304,7 +302,7 @@ jobsense/
 │   ├── build_salary_db.py      # 薪资数据库构建
 │   └── run_evaluation.py       # RAGAS 评估
 │
-├── tests/                      # 45 个自动化测试
+├── tests/                      # 40 个自动化测试
 ├── data/                       # 数据目录
 │   ├── raw/                    # 原始文档
 │   ├── processed/              # 处理后数据 + salary.db

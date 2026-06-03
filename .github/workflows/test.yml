@@ -20,18 +20,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest pydantic python-dotenv
-          pip install langchain langgraph langchain-core
-          pip install langchain-openai langchain-community
-          pip install langchain-text-splitters langchain-chroma
-          pip install chromadb rank-bm25 jieba
-          pip install pandas numpy
+          pip install langchain langgraph langchain-core langchain-openai langchain-community
+          pip install langchain-text-splitters langchain-chroma langchain-huggingface
+          pip install chromadb rank-bm25 jieba pandas numpy
           pip install fastapi uvicorn streamlit requests
           pip install sentence-transformers
-          pip install PyMuPDF python-docx pdfplumber
-          pip install playwright beautifulsoup4
-          python -m playwright install chromium
-          python -m playwright install-deps
+          pip install playwright beautifulsoup4 PyMuPDF python-docx pdfplumber
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --tb=line 2>&1 | head -80
+          python -m pytest tests/ -v
