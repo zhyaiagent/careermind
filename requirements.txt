@@ -1,5 +1,4 @@
-# Core
-python>=3.10
+# Core (Python 3.10+)
 langchain>=0.3.0
 langgraph>=0.2.0
 langchain-openai>=0.2.0
