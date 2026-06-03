@@ -9,22 +9,17 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install pytest pydantic python-dotenv langchain-core langchain langgraph chromadb jieba rank-bm25
+          pip install -r requirements.txt
 
       - name: Run tests
         run: |
