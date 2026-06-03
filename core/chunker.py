@@ -8,7 +8,7 @@ Strategy:
 - Tables and image descriptions are kept whole (no splitting)
 - Separators: ["\n\n", "\n", "。", "，", "、", " ", ""]
 """
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# Lazy import — only needed when chunking, not at module load
 
 # Import from core.document_processor for type hint
 from core.document_processor import ProcessedDocument
@@ -26,6 +26,7 @@ class DocumentChunker:
     """
 
     def __init__(self):
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
         self.jd_splitter = RecursiveCharacterTextSplitter(
             chunk_size=300,
             chunk_overlap=50,

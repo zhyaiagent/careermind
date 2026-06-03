@@ -15,7 +15,6 @@ import json
 import re
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 
 from config import (
     LLM_MODEL, DEEPSEEK_API_KEY, DASHSCOPE_API_KEY, OPENAI_API_KEY,
@@ -119,6 +118,7 @@ class GenerationManager:
 
     def _init_llm(self):
         """Initialize the LLM based on config."""
+        from langchain_openai import ChatOpenAI
         if self.model_name == "deepseek":
             return ChatOpenAI(
                 model="deepseek-chat",

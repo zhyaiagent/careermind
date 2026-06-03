@@ -6,7 +6,6 @@ The LLM decides which tool to call based on the user's question.
 """
 import json
 import sqlite3
-import pandas as pd
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -109,6 +108,7 @@ def query_salary(
             params.append(f"%{experience}%")
         query_parts.append("LIMIT 10")
 
+        import pandas as pd
         df = pd.read_sql(" ".join(query_parts), conn, params=params)
         conn.close()
 
