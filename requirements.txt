@@ -1,0 +1,40 @@
+# Core
+python>=3.10
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+langchain-mcp-adapters>=0.1.0
+
+# Embedding & Retrieval
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+rank-bm25>=0.2.2
+jieba>=0.42.1
+
+# Document Processing
+PyMuPDF>=1.23.0
+pdfplumber>=0.10.0
+unstructured>=0.12.0
+python-docx>=1.0.0
+
+# Database
+sqlite-utils>=3.35
+pandas>=2.0.0
+
+# API & Web
+fastapi>=0.100.0
+uvicorn>=0.24.0
+streamlit>=1.30.0
+requests>=2.31.0
+
+# Evaluation
+ragas>=0.2.0
+datasets>=2.14.0
+
+# Search
+langchain-tavily>=0.1.0
+
+# Utils
+python-dotenv>=1.0.0
+pydantic>=2.0.0

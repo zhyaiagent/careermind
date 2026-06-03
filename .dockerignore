@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+.pytest_cache
+.env
+data/chroma_db
+data/processed
+data/screenshots
+.git
+.gitignore
+*.md

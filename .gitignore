@@ -1,0 +1,20 @@
+# Keys & secrets
+.env
+
+# Data
+data/chroma_db/
+data/processed/
+data/screenshots/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+
+# Docker
+docker-compose.override.yml
