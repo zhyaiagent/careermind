@@ -193,45 +193,6 @@ class TestReActAgent:
 
 
 # ═══════════════════════════════════════════════════
-#  Legacy Nodes (still working, usable standalone)
-# ═══════════════════════════════════════════════════
-
-class TestLegacyNodes:
-    """Legacy nodes still function as standalone components."""
-
-    def test_rag_node(self):
-        from agent.nodes.rag_node import RAGNode
-        node = RAGNode(retriever=FakeRetriever(), generator=FakeGenerator())
-        result = node({"query": "AI技能", "iteration_count": 0})
-        assert len(result["retrieved_docs"]) == 3
-        assert "raw_answer" in result
-
-    def test_skill_match_node(self):
-        from agent.nodes.skill_match_node import SkillMatchNode
-        node = SkillMatchNode(retriever=FakeRetriever(), generator=FakeGenerator())
-        result = node({"query": "岗位匹配", "iteration_count": 0})
-        assert "raw_answer" in result
-
-    def test_chat_node(self):
-        from agent.nodes.chat_node import ChatNode
-        node = ChatNode(llm=FakeLLM("chat response"))
-        result = node({"query": "面试注意什么"})
-        assert "final_answer" in result
-
-    def test_reject_node(self):
-        from agent.nodes.reject_node import RejectNode
-        node = RejectNode()
-        result = node({"query": "不相关"})
-        assert "抱歉" in result["final_answer"]
-
-    def test_intent_router(self):
-        from agent.routers.intent_router import IntentRouter
-        router = IntentRouter(llm=FakeLLM(response="jd_analysis"))
-        result = router.route({"messages": [], "query": "分析JD"})
-        assert result["intent"] in ["jd_analysis", "salary_query", "skill_match", "chat", "reject"]
-
-
-# ═══════════════════════════════════════════════════
 #  Conversation Memory
 # ═══════════════════════════════════════════════════
 

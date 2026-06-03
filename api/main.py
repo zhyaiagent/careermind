@@ -136,7 +136,7 @@ def create_app() -> FastAPI:
                 from playwright.sync_api import sync_playwright
                 import time
                 pw = sync_playwright().start()
-                b = pw.chromium.launch(channel="msedge", headless=False, args=[
+                b = pw.chromium.launch(headless=False, args=[
                     "--start-fullscreen", "--window-size=1920,1080", "--no-first-run", "--no-default-browser-check"
                 ])
                 ctx = b.new_context(viewport={"width": 1920, "height": 1080}, no_viewport=False)

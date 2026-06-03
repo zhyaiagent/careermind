@@ -98,8 +98,8 @@ async def _execute_browser_task(msg: str, llm) -> str | None:
             except: pass
         _pw_inst = sync_playwright().start()
         _browser_inst = _pw_inst.chromium.launch(
-            channel="msedge", headless=False,
-            args=["--start-fullscreen", "--window-size=1920,1080", "--no-first-run", "--no-default-browser-check"]
+            headless=False,
+            args=["--no-first-run", "--no-default-browser-check"]
         )
         _ctx = _browser_inst.new_context(viewport={"width": 1920, "height": 1080}, no_viewport=False)
         _browser_page = _ctx.new_page()
@@ -118,32 +118,40 @@ async def _execute_browser_task(msg: str, llm) -> str | None:
                 elif action == "click":
                     sel = args.get("selector", "")
                     txt = args.get("text", "")
-                    n = int(args.get("result_index", 0))  # click Nth search result
+                    n = int(args.get("result_index", 0))
                     if n > 0:
-                        # Click the Nth search result link on Baidu
-                        # Baidu results are in div.result h3 a or div.c-container h3 a
-                        links = _browser_page.locator("h3 a, .result h3 a, .c-container h3 a, #content_left h3 a")
+                        links = _browser_page.locator("h3 a, .result h3 a, .c-container h3 a, #content_left h3 a, #b_results h2 a")
                         count = links.count()
                         if count >= n:
                             links.nth(n-1).click()
-                            results.append(f"[{i+1}] 已点击第{n}个搜索结果 (共{count}个)")
+                            results.append(f"[{i+1}] Clicked result #{n} ({count} total)")
                         else:
-                            results.append(f"[{i+1}] 搜索结果只有{count}个，无法点击第{n}个")
+                            results.append(f"[{i+1}] Only {count} results, can't click #{n}")
                     elif sel:
                         _browser_page.locator(sel).first.click(timeout=5000)
-                        results.append(f"[{i+1}] 已点击: {sel}")
+                        results.append(f"[{i+1}] Clicked: {sel}")
                     elif txt:
-                        try:
-                            _browser_page.get_by_text(txt, exact=False).first.click(timeout=3000)
-                        except Exception:
+                        clicked = False
+                        for strategy in ["get_by_text", "a:has-text", "text=", "link"]:
                             try:
-                                _browser_page.locator(f"a:has-text('{txt}')").first.click(timeout=3000)
+                                if strategy == "get_by_text":
+                                    _browser_page.get_by_text(txt, exact=False).first.click(timeout=3000)
+                                elif strategy == "a:has-text":
+                                    _browser_page.locator(f"a:has-text('{txt}')").first.click(timeout=3000)
+                                elif strategy == "text=":
+                                    _browser_page.locator(f"text={txt}").first.click(timeout=3000)
+                                elif strategy == "link":
+                                    _browser_page.locator(f"[href*='{txt}'], a:has-text('{txt}'), span:has-text('{txt}'), div:has-text('{txt}')").first.click(timeout=3000)
+                                clicked = True
+                                results.append(f"[{i+1}] Clicked: {txt}")
+                                break
                             except Exception:
-                                _browser_page.locator(f"text={txt}").first.click(timeout=3000)
-                        results.append(f"[{i+1}] 已点击: {txt}")
+                                continue
+                        if not clicked:
+                            results.append(f"[{i+1}] Could not find clickable element: {txt}")
                     else:
                         _browser_page.locator("textarea, [contenteditable='true']").first.click(timeout=3000)
-                        results.append(f"[{i+1}] 已点击: 输入区")
+                        results.append(f"[{i+1}] Clicked input area")
                     time.sleep(1)
                 elif action == "type":
                     txt = args.get("text", "")

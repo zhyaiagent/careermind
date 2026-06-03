@@ -124,7 +124,7 @@ def _ensure_browser():
             if _pw: _pw.stop()
         except: pass
         _pw = sync_playwright().start()
-        _browser = _pw.chromium.launch(channel="msedge", headless=False, args=["--start-maximized","--disable-blink-features=AutomationControlled"])
+        _browser = _pw.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
         _page = _browser.new_page(viewport={"width": 1280, "height": 900})
         _page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return _page
