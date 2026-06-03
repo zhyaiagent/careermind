@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install pytest pydantic python-dotenv langchain langgraph langchain-core langchain-openai langchain-community langchain-chroma langchain-tavily langchain-text-splitters langchain-huggingface chromadb sentence-transformers rank-bm25 jieba pandas fastapi uvicorn streamlit requests playwright beautifulsoup4
 
       - name: Run tests
         run: |
