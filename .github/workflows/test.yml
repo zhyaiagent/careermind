@@ -9,5 +9,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r requirements.txt
-      - run: python -m pytest tests/ -v
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install pytest
+          pip install pydantic python-dotenv
+          pip install langchain langgraph langchain-core
+          pip install langchain-openai langchain-community
+          pip install langchain-text-splitters langchain-chroma
+          pip install chromadb rank-bm25 jieba pandas numpy
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=line
