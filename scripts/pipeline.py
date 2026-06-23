@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Step 1: Collect real JDs (optional - requires network)
     ans = input("\nCollect real JDs from Bing? This opens a browser. (y/n): ")
     if ans.lower() == 'y':
-        step("Collect JDs", "scripts/collect_real_data.py")
+        step("Collect JDs", "scripts/crawl_real_jds.py")
 
     # Step 2: Build salary DB
     step("Build Salary DB", "scripts/build_salary_db.py")

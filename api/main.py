@@ -13,6 +13,7 @@ from config import (
     API_HOST, API_PORT, LOG_LEVEL, LLM_MODEL, EMBEDDING_MODEL,
     CHROMA_PERSIST_DIR, CHUNKS_JSONL, DATABASE_URL,
 )
+from core.database import init_db as init_database
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -46,7 +47,11 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-    logger.info("Initializing JobSense components...")
+    logger.info("Initializing CareerMind components...")
+    init_database()
+    from core.auth import init_auth_tables
+    init_auth_tables()
+    logger.info("Database + Auth tables ready")
 
     # ── Embedding ──────────────────────────────────
     from core.embedding import EmbeddingManager
@@ -119,6 +124,21 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(upload_router)
     app.include_router(eval_router)
+
+    @app.post("/register")
+    async def register(username: str, password: str):
+        from core.auth import register
+        return register(username, password)
+
+    @app.post("/login")
+    async def login(username: str, password: str):
+        from core.auth import login
+        return login(username, password)
+
+    @app.get("/history")
+    async def get_history(thread_id: str = "default"):
+        from core.database import get_history
+        return {"messages": get_history(thread_id)}
 
     @app.get("/health")
     async def health_check():

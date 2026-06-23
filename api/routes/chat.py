@@ -10,7 +10,6 @@ router = APIRouter()
 
 _agent = None
 _llm = None
-_conversations: dict[str, list] = {}
 MAX_TURNS = 10
 
 # Persistent browser
@@ -258,7 +257,8 @@ async def chat(request: ChatRequest):
     if _agent is None: raise HTTPException(status_code=503, detail="Agent not initialized")
     try:
         tid = request.thread_id or "default"
-        history = _conversations.get(tid, [])
+        from core.database import get_history, save_message
+        history = [HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]) for m in get_history(tid)]
         msg_text = request.message
 
         # General browser task executor (LLM plans → Playwright executes)
@@ -275,9 +275,8 @@ async def chat(request: ChatRequest):
         messages.append(HumanMessage(content=msg_text))
         result = _agent.invoke({"messages": messages})
         final_answer, route, tool_calls = _extract_result(result)
-        history.append(HumanMessage(content=request.message))
-        history.append(AIMessage(content=final_answer))
-        _conversations[tid] = history[-(MAX_TURNS * 2):]
+        save_message(tid, "user", request.message)
+        save_message(tid, "assistant", final_answer)
         return ChatResponse(answer=final_answer or "error", intent=f"auto ({route})", sources=[], tool_calls=tool_calls)
     except Exception as e:
         logger.error(f"Chat error: {e}", exc_info=True)
