@@ -1,62 +1,182 @@
 [
   {
-    "question": "AI工程师需要什么技能？",
-    "ground_truth": "Python,PyTorch,深度学习,机器学习"
+    "question": "AI工程师需要掌握什么技能？",
+    "ground_truth": "Python,PyTorch,深度学习,Transformer,模型训练",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "AI Agent开发岗要求什么？",
-    "ground_truth": "LangChain,LangGraph,RAG,Agent"
+    "question": "AI Agent开发需要什么能力？",
+    "ground_truth": "LangChain,RAG,Agent,工具调用,Prompt",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "Python后端开发要会什么？",
-    "ground_truth": "Django,FastAPI,MySQL,Redis"
+    "question": "Python后端开发要什么框架？",
+    "ground_truth": "Django,FastAPI,MySQL,Redis,微服务",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "NLP工程师负责什么？",
-    "ground_truth": "文本分类,命名实体识别,关系抽取"
+    "question": "NLP工程师做什么工作？",
+    "ground_truth": "文本分类,命名实体识别,关系抽取,文本摘要",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "大模型工程师学历要求？",
-    "ground_truth": "硕士,计算机,AI,论文"
+    "question": "大模型工程师学历有什么要求？",
+    "ground_truth": "硕士,计算机,AI,博士,论文",
+    "contexts": [],
+    "answer": ""
   },
   {
     "question": "数据分析师需要什么工具？",
-    "ground_truth": "SQL,Python,Pandas,可视化"
+    "ground_truth": "SQL,Python,Pandas,可视化,Spark",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "Java后端开发要求什么？",
-    "ground_truth": "Spring,微服务,Java,分布式"
+    "question": "Java后端开发需要掌握什么？",
+    "ground_truth": "Spring,微服务,Java,分布式,MySQL",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "深度学习工程师做什么？",
-    "ground_truth": "计算机视觉,模型压缩,量化"
+    "question": "深度学习工程师薪资怎么样？",
+    "ground_truth": "PyTorch,CV,模型部署,30K,50K",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "大模型应用开发要求？",
-    "ground_truth": "Prompt,向量检索,RAG,全栈"
+    "question": "大模型应用开发需要什么？",
+    "ground_truth": "Prompt,RAG,向量检索,全栈,LLM",
+    "contexts": [],
+    "answer": ""
   },
   {
     "question": "AI产品经理需要什么能力？",
-    "ground_truth": "需求分析,产品规划,协调沟通"
+    "ground_truth": "需求分析,产品规划,AI理解,数据分析",
+    "contexts": [],
+    "answer": ""
   },
   {
     "question": "商汤科技的AI岗位要求？",
-    "ground_truth": "PyTorch,模型部署,算法"
+    "ground_truth": "PyTorch,模型部署,算法,CV,深度学习",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "北京地区Python开发薪资？",
-    "ground_truth": "25K,45K,30K"
+    "question": "北京Python开发薪资多少？",
+    "ground_truth": "25K,45K,30K,35K,北京",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "应届生AI岗位有什么要求？",
-    "ground_truth": "Python,实习,项目,基础"
+    "question": "应届生如何进入AI行业？",
+    "ground_truth": "Python,实习,项目,算法基础,论文",
+    "contexts": [],
+    "answer": ""
   },
   {
     "question": "大厂AI岗位薪资水平？",
-    "ground_truth": "30K,50K,60K"
+    "ground_truth": "30K,50K,60K,80K,北京",
+    "contexts": [],
+    "answer": ""
   },
   {
-    "question": "AI算法工程师的核心竞争力？",
-    "ground_truth": "Transformer,LLM,分布式训练"
+    "question": "AI算法工程师核心竞争力？",
+    "ground_truth": "Transformer,LLM,分布式训练,顶会",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "前端开发工程师需要什么技能？",
+    "ground_truth": "React,Vue,TypeScript,JavaScript,CSS",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "DevOps工程师做什么？",
+    "ground_truth": "Docker,K8s,CI/CD,Linux,监控",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "推荐算法工程师需要什么？",
+    "ground_truth": "深度学习,协同过滤,A/B测试,特征工程",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "数据工程师主要任务？",
+    "ground_truth": "ETL,数据仓库,Spark,Hadoop,SQL",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "Go后端开发需要什么？",
+    "ground_truth": "Go,微服务,gRPC,并发,分布式",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "测试开发工程师技能？",
+    "ground_truth": "自动化测试,CI/CD,Python,性能测试",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "安全工程师需要掌握什么？",
+    "ground_truth": "渗透测试,漏洞扫描,加密,安全审计",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "云计算工程师要求？",
+    "ground_truth": "AWS,K8s,Docker,Terraform,微服务",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "知识图谱工程师做什么？",
+    "ground_truth": "NER,关系抽取,图数据库,SPARQL",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "量化交易开发需要什么？",
+    "ground_truth": "Python,C++,回测,金融知识,低延迟",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "语音识别工程师技能？",
+    "ground_truth": "ASR,深度学习,信号处理,声学模型",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "多模态算法工程师要求？",
+    "ground_truth": "视觉,语言,跨模态,Transformer,CLIP",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "AutoML工程师做什么？",
+    "ground_truth": "超参优化,NAS,模型压缩,自动调参",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "MLOps工程师需要什么？",
+    "ground_truth": "Kubeflow,MLflow,模型监控,CI/CD",
+    "contexts": [],
+    "answer": ""
+  },
+  {
+    "question": "对话系统工程师技能？",
+    "ground_truth": "NLP,意图识别,对话管理,Rasa,LLM",
+    "contexts": [],
+    "answer": ""
   }
 ]

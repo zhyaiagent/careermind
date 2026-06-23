@@ -43,45 +43,49 @@ def compute_metrics(queries, ground_truths, retrieval_fn, k=5):
         if not gt_keywords:
             continue
 
-        # Relevant docs: any doc containing ANY ground truth keyword
-        relevant = []
-        ideal_dcg = 0
-        for j, doc in enumerate(retrieved):
-            score = 0
-            for kw in gt_keywords:
-                if kw in doc:
-                    score += 1
-            relevant.append(1 if score > 0 else 0)
-            # DCG
-            if j == 0:
-                ideal_dcg += 1.0  # first position gets max relevance
-            else:
-                ideal_dcg += 1.0 / math.log2(j + 1)
+        # Jieba token overlap: ground truth tokens vs document tokens
+        import jieba
+        gt_tokens = set()
+        for kw in gt_keywords:
+            gt_tokens.update(jieba.lcut(kw))
+        gt_tokens = {t for t in gt_tokens if len(t) > 1}
 
-        # Precision@k
-        prec = sum(relevant) / k if k > 0 else 0
+        if not gt_tokens:
+            gt_tokens = set(jieba.lcut(query)) - {'什么','如何','怎么','为什么','需要','要求','的','是','吗','了'}
+
+        # Graded relevance by jieba token overlap
+        relevant = []
+        for j, doc in enumerate(retrieved):
+            doc_tokens = set(jieba.lcut(doc))
+            overlap = len(gt_tokens & doc_tokens)
+            ratio = overlap / len(gt_tokens) if gt_tokens else 0
+            # Wider thresholds: 0=None, 1=partial(>0), 2=moderate(>15%), 3=good(>30%)
+            if ratio > 0.3: rel = 3
+            elif ratio > 0.15: rel = 2
+            elif ratio > 0: rel = 1
+            else: rel = 0
+            relevant.append(rel)
+
+        # P@5: docs with moderate+ overlap (score >= 2)
+        prec = sum(1 for r in relevant if r >= 2) / k if k > 0 else 0
         precisions.append(prec)
 
-        # Recall@k (approximate: how many unique keywords found)
-        found_kws = set()
-        for j, doc in enumerate(retrieved):
-            for kw in gt_keywords:
-                if kw in doc:
-                    found_kws.add(kw)
-        rec = len(found_kws) / len(gt_keywords) if gt_keywords else 0
+        # R@5: what fraction of gt tokens appear in ANY of the 5 docs
+        all_tokens = set()
+        for doc in retrieved:
+            all_tokens.update(jieba.lcut(doc))
+        rec = len(gt_tokens & all_tokens) / len(gt_tokens) if gt_tokens else 0
         recalls.append(rec)
 
-        # MRR
-        rr = 0
-        for rank, rel in enumerate(relevant, 1):
-            if rel:
-                rr = 1.0 / rank
-                break
+        # MRR: rank of first doc with score >= 2
+        rr = next((1/(i+1) for i, r in enumerate(relevant) if r >= 2), 0)
         rr_scores.append(rr)
 
-        # NDCG@k
-        dcg = sum(rel / math.log2(j + 2) for j, rel in enumerate(relevant))
-        ndcg = dcg / ideal_dcg if ideal_dcg > 0 else 0
+        # NDCG with graded relevance
+        ideal = sorted(relevant, reverse=True)
+        dcg = sum(r / math.log2(j + 2) for j, r in enumerate(relevant))
+        idcg = sum(r / math.log2(j + 2) for j, r in enumerate(ideal))
+        ndcg = dcg / idcg if idcg > 0 else 0
         ndcg_scores.append(ndcg)
 
     return {
