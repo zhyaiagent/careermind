@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import (
     API_HOST, API_PORT, LOG_LEVEL, LLM_MODEL, EMBEDDING_MODEL,
-    SALARY_DB_PATH, CHROMA_PERSIST_DIR, CHUNKS_JSONL,
+    CHROMA_PERSIST_DIR, CHUNKS_JSONL, DATABASE_URL,
 )
 
 logging.basicConfig(
@@ -95,7 +95,7 @@ def create_app() -> FastAPI:
         retriever=retriever,
         generator=generator,
         web_search=web_search_tool,
-        salary_db_path=str(SALARY_DB_PATH),
+        salary_db_path="",
         embedding_manager=embedding_manager,
     )
 

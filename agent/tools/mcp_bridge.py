@@ -187,6 +187,21 @@ def _get_client(server_name: str) -> Optional[MCPClient]:
 
 @tool(args_schema=MCPToolInput)
 def call_mcp_tool(server: str, tool_name: str, arguments: str = "{}") -> str:
+    """调用外部MCP服务（自动重试3次，失败则降级提示）。"""
+    # try up to 3 times
+    import time
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            return _call_mcp_tool_impl(server, tool_name, arguments)
+        except Exception as e:
+            last_err = e
+            if attempt < 3:
+                time.sleep(0.5 * attempt)
+    return f"[MCP {server}/{tool_name} 暂时不可用 (重试3次失败): {last_err}]"
+
+
+def _call_mcp_tool_impl(server: str, tool_name: str, arguments: str = "{}") -> str:
     """
     调用外部MCP服务。当前可用服务器:
 

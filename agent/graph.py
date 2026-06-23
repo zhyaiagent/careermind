@@ -334,7 +334,15 @@ def route_after_reflection(state: HybridAgentState) -> str:
 
 def build_agent_graph(llm, checkpointer=None):
     tools = get_tools()
-    tool_map = {t.name: t for t in tools}
+    # Normalize: StructuredTool -> use .name, raw function -> use __name__
+    normalized = []
+    for t in tools:
+        if hasattr(t, 'func'):  # StructuredTool -> unwrap to raw function
+            normalized.append(t.func)
+        else:
+            normalized.append(t)
+    tool_map = {getattr(t, 'name', None) or t.__name__: t for t in normalized}
+    tools = normalized
 
     graph = StateGraph(HybridAgentState)
 

@@ -1,0 +1,62 @@
+[
+  {
+    "question": "AI工程师需要什么技能？",
+    "ground_truth": "Python,PyTorch,深度学习,机器学习"
+  },
+  {
+    "question": "AI Agent开发岗要求什么？",
+    "ground_truth": "LangChain,LangGraph,RAG,Agent"
+  },
+  {
+    "question": "Python后端开发要会什么？",
+    "ground_truth": "Django,FastAPI,MySQL,Redis"
+  },
+  {
+    "question": "NLP工程师负责什么？",
+    "ground_truth": "文本分类,命名实体识别,关系抽取"
+  },
+  {
+    "question": "大模型工程师学历要求？",
+    "ground_truth": "硕士,计算机,AI,论文"
+  },
+  {
+    "question": "数据分析师需要什么工具？",
+    "ground_truth": "SQL,Python,Pandas,可视化"
+  },
+  {
+    "question": "Java后端开发要求什么？",
+    "ground_truth": "Spring,微服务,Java,分布式"
+  },
+  {
+    "question": "深度学习工程师做什么？",
+    "ground_truth": "计算机视觉,模型压缩,量化"
+  },
+  {
+    "question": "大模型应用开发要求？",
+    "ground_truth": "Prompt,向量检索,RAG,全栈"
+  },
+  {
+    "question": "AI产品经理需要什么能力？",
+    "ground_truth": "需求分析,产品规划,协调沟通"
+  },
+  {
+    "question": "商汤科技的AI岗位要求？",
+    "ground_truth": "PyTorch,模型部署,算法"
+  },
+  {
+    "question": "北京地区Python开发薪资？",
+    "ground_truth": "25K,45K,30K"
+  },
+  {
+    "question": "应届生AI岗位有什么要求？",
+    "ground_truth": "Python,实习,项目,基础"
+  },
+  {
+    "question": "大厂AI岗位薪资水平？",
+    "ground_truth": "30K,50K,60K"
+  },
+  {
+    "question": "AI算法工程师的核心竞争力？",
+    "ground_truth": "Transformer,LLM,分布式训练"
+  }
+]

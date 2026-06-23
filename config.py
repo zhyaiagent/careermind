@@ -37,8 +37,8 @@ REPORT_CHUNK_OVERLAP = 100
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", str(PROJECT_ROOT / "data/chroma_db"))
 CHROMA_COLLECTION_NAME = "jobsense"
 
-# Salary DB
-SALARY_DB_PATH = os.getenv("SALARY_DB_PATH", str(PROJECT_ROOT / "data/processed/salary.db"))
+# Database — PostgreSQL via Docker (default), fallback SQLite for local dev
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://jobsense:jobsense123@localhost:5432/jobsense")
 
 # Paths
 DATA_RAW = PROJECT_ROOT / "data/raw"
