@@ -14,17 +14,6 @@ services:
       interval: 5s
       retries: 5
 
-  mcp:
-    build: .
-    command: python scripts/mcp_server.py
-    ports:
-      - "9020:9020"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9020/health')"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-
   api:
     build: .
     command: python -m api.main
@@ -41,7 +30,7 @@ services:
       - ./.env:/app/.env:ro
       - ${USERPROFILE}/.cache/huggingface:/root/.cache/huggingface
     depends_on:
-      mcp:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]

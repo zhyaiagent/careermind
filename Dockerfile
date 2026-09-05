@@ -20,6 +20,6 @@ RUN playwright install chromium && playwright install-deps chromium
 
 COPY . .
 
-EXPOSE 8001 8501 9020
+EXPOSE 8001 8501
 
 CMD ["python", "-m", "api.main"]
