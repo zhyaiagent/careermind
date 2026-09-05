@@ -46,29 +46,20 @@ TOOLS_PROMPT = """
 - `analyze_jd`: 结构化分析岗位JD
 - `match_skills`: 对比用户技能与岗位要求
 - `calendar_tool`: 日历查询
-- `call_mcp_tool`: 调用外部MCP服务，包含以下能力:
-  · browser_action: 浏览器多步操控。action类型:
-    - navigate: 打开网址 (url)
-    - click: 点击按钮 (text或selector)
-    - type: 输入文字 (text)
-    - press: 按键 (key, 如Enter)
-    - get_content: 获取页面文字
-    - screenshot: 截图看页面
-    - wait: 等待 (seconds, reason如"等待用户扫码")
-    - search: Bing搜索 (query)
-  · get_interview_tips: 面试准备建议
-  · calculate_after_tax: 税后薪资计算
-  · get_company_info: 公司信息查询
-- `list_mcp_services`: 查看可用的MCP服务
+- `call_mcp_tool`: 调用外部 MCP 服务（企业司法查询 + 浏览器自动化）:
+  ShuidiRisk (server="ShuidiRisk") — 企业司法风险/大数据查询:
+    · search_risk: 综合风险 — call_mcp_tool(server="ShuidiRisk",tool_name="search_risk",arguments='{"company_name":"公司名"}')
+    · search_lawsuit / search_punishment / search_bankruptcy / search_abnormal_operation 等 28 个查询工具
+    · 入参都是 company_name（必填），可选 page_index
+  playwright (server="playwright") — 浏览器自动化:
+    · browser_navigate: 打开网页 — call_mcp_tool(server="playwright",tool_name="browser_navigate",arguments='{"url":"网址"}')
+    · browser_click / browser_type / browser_snapshot / browser_take_screenshot / browser_press_key / browser_fill_form / browser_tabs 等 24 个工具
+- `list_mcp_services`: 查看可用的MCP服务及完整工具列表
 """
 
 REACT_PROMPT = f"""你是 CareerMind 智能求职助手。{TOOLS_PROMPT}
 
 ## 死命令
-- 当用户说"打开"/"浏览"/"访问"+网址 → **必须且立即调用**:
-  call_mcp_tool(server="JobTools", tool_name="browser_action", arguments='{{"action":"navigate","url":"网址"}}')
-- 禁止用文字描述网页内容来假装你打开了浏览器
-- 禁止说"我已经打开了"但实际没调工具
 - 先调工具，再根据返回内容回答
 - 用户问"今日"或"今天"的数据 → 当前日期是{__import__('datetime').datetime.now().strftime('%Y年%m月%d日')}，不要用旧日期
 
@@ -94,7 +85,7 @@ PLANNER_PROMPT = """你是一个任务规划器。根据用户问题，将任务
 - args: 工具参数(JSON对象)
 
 工具列表:
-- call_mcp_tool: server固定"JobTools"。可用tool_name: browser_action / get_interview_tips / calculate_after_tax / get_company_info
+- call_mcp_tool: server="ShuidiRisk"(企业查询，tool_name 如 search_risk，arguments 为 {{"company_name": "..."}}) 或 "playwright"(浏览器，tool_name 如 browser_navigate，arguments 为 {{"url": "..."}})
 - search_knowledge_base: {{"query": "..."}}
 - search_web: {{"query": "..."}}
 - query_salary: {{"job_title": "...", "city": "...", "experience": "..."}}

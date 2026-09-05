@@ -21,23 +21,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── Persistent Browser State (module-level) ─────
-_pw_inst = None
-_browser_inst = None
-_browser_page = None
-
-
-def _ensure_browser():
-    """Start or reuse a browser instance."""
-    global _pw_inst, _browser_inst, _browser_page
-    from playwright.sync_api import sync_playwright
-    if _browser_inst is None or not _browser_inst.is_connected():
-        _pw_inst = sync_playwright().start()
-        _browser_inst = _pw_inst.chromium.launch(headless=False)
-        _browser_page = _browser_inst.new_page()
-    return _browser_page
-
-
 def create_app() -> FastAPI:
     """Build and configure the FastAPI application."""
     app = FastAPI(
@@ -106,9 +89,7 @@ def create_app() -> FastAPI:
 
     # ── Build Hybrid Agent ──────────────────────────
     from agent.graph import build_agent_graph
-    from agent.memory import ConversationMemory
 
-    memory = ConversationMemory()
     # No checkpointer — chat route manages clean history manually
     agent_graph = build_agent_graph(llm=generator.llm, checkpointer=None)
     logger.info("Hybrid Agent compiled (ReAct + Plan-Execute, 8 tools)")
@@ -118,7 +99,7 @@ def create_app() -> FastAPI:
     from api.routes.upload import router as upload_router, init_upload_route
     from api.routes.evaluation import router as eval_router
 
-    init_chat_route(agent_graph, memory, generator.llm)
+    init_chat_route(agent_graph, llm=generator.llm)
     init_upload_route(process_document, chunker, embedding_manager, vectorstore, retriever, bm25_corpus)
 
     app.include_router(chat_router)
@@ -142,55 +123,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check():
-        return {"status": "ok", "version": "2.0.0", "agent": "Hybrid(ReAct+PlanExecute)", "tools": 8, "mcp_tools": 4}
-
-    @app.get("/browser")
-    async def open_browser(url: str = "https://www.baidu.com", search: str = ""):
-        """浏览器控制 — 独立线程，绕过asyncio"""
-        import traceback, threading, queue
-
-        result_queue = queue.Queue()
-
-        def _sync():
-            try:
-                from playwright.sync_api import sync_playwright
-                import time
-                pw = sync_playwright().start()
-                b = pw.chromium.launch(headless=False, args=[
-                    "--start-fullscreen", "--window-size=1920,1080", "--no-first-run", "--no-default-browser-check"
-                ])
-                ctx = b.new_context(viewport={"width": 1920, "height": 1080}, no_viewport=False)
-                p = ctx.new_page()
-                if search:
-                    p.goto("https://www.baidu.com", timeout=30000, wait_until="commit")
-                    time.sleep(2)
-                    p.keyboard.press("Tab")
-                    time.sleep(0.5)
-                    p.keyboard.type(search, delay=80)
-                    time.sleep(0.5)
-                    p.keyboard.press("Enter")
-                    time.sleep(3)
-                else:
-                    p.goto(url, timeout=30000, wait_until="commit")
-                    time.sleep(2)
-                text = p.inner_text("body")
-                title = p.title()
-                def _close():
-                    time.sleep(300)
-                    try: p.close(); b.close(); pw.stop()
-                    except: pass
-                threading.Thread(target=_close, daemon=True).start()
-                result_queue.put({"ok": True, "title": title, "url": url, "preview": text[:1000]})
-            except Exception as e:
-                result_queue.put({"ok": False, "error": str(e), "trace": traceback.format_exc()})
-
-        t = threading.Thread(target=_sync, daemon=True)
-        t.start()
-        t.join(timeout=30)
-        try:
-            return result_queue.get_nowait()
-        except queue.Empty:
-            return {"ok": True, "title": "browser launched", "preview": "浏览器已启动，请查看桌面"}
+        return {"status": "ok", "version": "2.0.0", "agent": "Hybrid(ReAct+PlanExecute)", "tools": 6, "mcp_tools": 7}
 
     logger.info("JobSense API v2.0 ready")
     return app

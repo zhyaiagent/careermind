@@ -1,8 +1,7 @@
 """
-Test Suite — Agent (ReAct + Tools + Legacy Nodes)
+Test Suite — Agent (ReAct + Tools)
 
-Tests: AgentState, Tools, ReAct graph, ConversationMemory,
-and legacy nodes (still usable as standalone components).
+Tests: Tools, ReAct graph.
 """
 import pytest
 import sys
@@ -65,22 +64,6 @@ class FakeWebSearch:
         self.search_client = True
     def search(self, query):
         return f"Web results for: {query}"
-
-
-# ═══════════════════════════════════════════════════
-#  AgentState
-# ═══════════════════════════════════════════════════
-
-class TestAgentState:
-    def test_state_has_messages(self):
-        from agent.state import AgentState
-        assert "messages" in AgentState.__annotations__
-
-    def test_state_is_typeddict(self):
-        from agent.state import AgentState
-        from typing import TypedDict
-        # AgentState is a TypedDict with operator.add annotated messages
-        assert "messages" in AgentState.__annotations__
 
 
 # ═══════════════════════════════════════════════════
@@ -190,23 +173,6 @@ class TestReActAgent:
         from langchain_core.messages import HumanMessage
         result = agent_graph.invoke({"messages": [HumanMessage(content="AI工程师需要什么技能？")]})
         assert "messages" in result
-
-
-# ═══════════════════════════════════════════════════
-#  Conversation Memory
-# ═══════════════════════════════════════════════════
-
-class TestConversationMemory:
-    def test_memory_checkpointer(self):
-        from agent.memory import ConversationMemory
-        m = ConversationMemory()
-        assert m.get_checkpointer() is not None
-
-    def test_thread_config(self):
-        from agent.memory import ConversationMemory
-        m = ConversationMemory()
-        cfg = m.get_thread_config("t123")
-        assert cfg["configurable"]["thread_id"] == "t123"
 
 
 if __name__ == "__main__":

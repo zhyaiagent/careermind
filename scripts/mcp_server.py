@@ -243,6 +243,42 @@ def browser_action(action: str, **kwargs) -> str:
 
 
 # ═══════════════════════════════════════════════════
+#  Tool 7-9: GitHub API
+# ═══════════════════════════════════════════════════
+
+def search_github(query: str, language: str = "", per_page: int = 5) -> str:
+    import urllib.request, urllib.parse, json
+    q = query
+    if language: q += f" language:{language}"
+    url = f"https://api.github.com/search/repositories?q={urllib.parse.quote(q)}&per_page={per_page}&sort=stars"
+    try:
+        req = urllib.request.Request(url, headers={"Accept":"application/vnd.github.v3+json","User-Agent":"CareerMind"})
+        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        items = data.get("items",[])
+        if not items: return "No repos found."
+        return "\n".join(f"- **{r['full_name']}** ({r['stargazers_count']}*)\n  {r.get('description','')[:100]}\n  {r['html_url']}" for r in items)
+    except Exception as e: return f"GitHub error: {e}"
+
+def company_github(company: str, per_page: int = 5) -> str:
+    import urllib.request, urllib.parse, json
+    url = f"https://api.github.com/orgs/{urllib.parse.quote(company)}/repos?per_page={per_page}&sort=updated"
+    try:
+        req = urllib.request.Request(url, headers={"Accept":"application/vnd.github.v3+json","User-Agent":"CareerMind"})
+        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        if isinstance(data, dict) and data.get("message"): return f"{company}: {data['message']}"
+        return "\n".join(f"- **{r['name']}** ({r.get('language','?')}) | {r.get('description','')[:80]}" for r in data[:per_page])
+    except Exception as e: return f"Error: {e}"
+
+def github_trending() -> str:
+    import urllib.request, json
+    url = "https://api.github.com/search/repositories?q=stars:>1000+pushed:>2025-06-01&sort=stars&order=desc&per_page=5"
+    try:
+        req = urllib.request.Request(url, headers={"Accept":"application/vnd.github.v3+json","User-Agent":"CareerMind"})
+        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        return "\n".join(f"- **{r['full_name']}** ({r['stargazers_count']}*) | {r.get('language','?')}\n  {r.get('description','')[:100]}" for r in data.get("items",[])[:5])
+    except Exception as e: return f"Error: {e}"
+
+# ═══════════════════════════════════════════════════
 #  MCP JSON-RPC Handler
 # ═══════════════════════════════════════════════════
 
@@ -283,19 +319,36 @@ TOOLS_SCHEMA = [
         }
     },
     {
+        "name": "search_github",
+        "description": "Search GitHub repositories by keyword and language",
+        "inputSchema": {"type":"object","properties":{"query":{"type":"string","description":"search keyword"},"language":{"type":"string","description":"programming language"},"per_page":{"type":"integer","description":"max results"}},"required":["query"]}
+    },
+    {
+        "name": "company_github",
+        "description": "Get a company's open source repositories on GitHub",
+        "inputSchema": {"type":"object","properties":{"company":{"type":"string","description":"GitHub org name, e.g. bytedance"},"per_page":{"type":"integer"}},"required":["company"]}
+    },
+    {
+        "name": "github_trending",
+        "description": "Get trending GitHub repositories",
+        "inputSchema": {"type":"object","properties":{}}
+    },
+    {
         "name": "browser_action",
-        "description": "浏览器多步操控工具。action类型: navigate(打开网址,需url)/click(点击,需text或selector)/type(输入,需text)/press(按键,需key)/get_content(获取页面文字)/screenshot(截图看页面)/wait(等待,可设seconds和reason)/scroll(滚动)/search(Bing搜索,需query)。多步骤任务请逐步调用此工具。",
+        "description": "浏览器多步操作：navigate打开网址/click点击/type输入/press按键/get_content取文字/screenshot截图/wait等待/scroll滚动/search搜索",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "description": "操作: navigate/click/type/press/get_content/screenshot/wait/scroll/search"},
-                "url": {"type": "string", "description": "网址(navigate时必填)"},
-                "text": {"type": "string", "description": "按钮文字(click时)或输入内容(type时)"},
-                "selector": {"type": "string", "description": "CSS选择器(click时可选)"},
-                "key": {"type": "string", "description": "按键名称(press时,如Enter/Tab)"},
-                "query": {"type": "string", "description": "搜索关键词(search时)"},
-                "seconds": {"type": "integer", "description": "等待秒数(wait时,默认5)"},
-                "reason": {"type": "string", "description": "等待原因(wait时,如'等待用户扫码登录')"}
+                "action": {"type": "string", "description": "操作类型: navigate/click/type/press/get_content/screenshot/wait/scroll/search"},
+                "url": {"type": "string", "description": "navigate 时用: 网址"},
+                "text": {"type": "string", "description": "click/type 时用: 文字"},
+                "selector": {"type": "string", "description": "click 时用: CSS选择器"},
+                "key": {"type": "string", "description": "press 时用: 按键名, 如 Enter/Tab"},
+                "query": {"type": "string", "description": "search 时用: 搜索词"},
+                "seconds": {"type": "integer", "description": "wait 时用: 等待秒数"},
+                "reason": {"type": "string", "description": "wait 时用: 等待原因"},
+                "direction": {"type": "string", "description": "scroll 时用: up/down"},
+                "amount": {"type": "integer", "description": "scroll 时用: 滚动像素"}
             },
             "required": ["action"]
         }
@@ -306,6 +359,9 @@ TOOL_HANDLERS = {
     "get_interview_tips": lambda args: get_interview_tips(**args),
     "calculate_after_tax": lambda args: calculate_after_tax(**args),
     "get_company_info": lambda args: get_company_info(**args),
+    "search_github": lambda args: search_github(**args),
+    "company_github": lambda args: company_github(**args),
+    "github_trending": lambda args: github_trending(**args),
     "browser_action": lambda args: browser_action(**args),
 }
 
@@ -351,14 +407,16 @@ async def mcp_handler(request: Request):
             })
 
         try:
-            # Run browser_action in thread to avoid asyncio conflict
-            if tool_name == "browser_action":
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(handler, arguments)
-                    result_text = future.result(timeout=30)
-            else:
-                result_text = handler(arguments)
+            # All tools: run in fresh thread (avoids thread lifecycle issues)
+            import threading, queue
+            q = queue.Queue()
+            def run():
+                try: q.put(handler(arguments))
+                except Exception as e: q.put(f"Error: {e}")
+            t = threading.Thread(target=run, daemon=True)
+            t.start()
+            t.join(timeout=30)
+            result_text = q.get() if not q.empty() else "Tool timeout"
             return JSONResponse({
                 "jsonrpc": "2.0", "id": req_id,
                 "result": {

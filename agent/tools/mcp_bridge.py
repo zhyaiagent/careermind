@@ -1,285 +1,220 @@
 """
-MCP Bridge — connects external MCP servers into the LangChain tool ecosystem.
+MCP Bridge — 使用官方 `mcp` 包作为标准 MCP Client，接通外部 MCP server。
 
-Architecture:
-  MCP Server (remote/external)  ← JSON-RPC over HTTP →  MCPBridge  →  LangChain @tool
-                                                         (sync wrapper)
+架构:
+  外部 MCP server (streamable_http / sse)  ← 官方 mcp.ClientSession →  LangChain @tool
 
-LLM sees MCP tools exactly the same as built-in tools.
-The bridge handles protocol translation transparently.
+LLM 通过 call_mcp_tool / list_mcp_services 调用外部 MCP 工具，与内置工具无异。
+此实现取代了此前手写的 JSON-RPC-over-HTTP 客户端。
 """
+import asyncio
 import json
 import logging
+import os
+import threading
+import time
 from typing import Optional
+
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
 logger = logging.getLogger(__name__)
 
 # ── MCP Server Registry ───────────────────────────
-# Add MCP servers here. Each entry: name → {url, transport}
+# 接通外部 MCP server 只需在此加一条配置。
+# transport: "streamable_http"（新版标准，推荐）| "sse"（旧版 HTTP+SSE）
 MCP_SERVERS = {
-    "JobTools": {
-        "url": "http://127.0.0.1:9020/mcp",
+    "ShuidiRisk": {
+        "url": "https://mcpmarket.cn/mcp/a06281cf67a6099e43044fcb",
         "transport": "streamable_http",
-        "description": "面试建议、税后薪资计算、公司信息查询",
+        "description": "企业司法风险/大数据查询（水滴风险，28 个工具）",
         "enabled": True,
     },
-    # 更多 MCP 服务器可以添加在这里:
-    # "12306": {
-    #     "url": "https://mcp.api-inference.modelscope.net/.../mcp",
-    #     "transport": "streamable_http",
-    #     "description": "火车票查询",
-    #     "enabled": True,
-    # },
+    "playwright": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": ["-y", "@playwright/mcp@latest"],
+        "description": "微软浏览器自动化（Playwright）",
+        "enabled": True,
+    },
 }
 
 
-# ── MCP Client ────────────────────────────────────
+# ── 官方 MCP Client 封装 ──────────────────────────
 
-class MCPClient:
-    """
-    Minimal sync MCP client using JSON-RPC over HTTP.
-
-    For production, use `mcp` SDK with async support.
-    This implementation demonstrates the protocol without heavy deps.
-    """
-
-    def __init__(self, url: str):
-        self.url = url
-        self.session_id: Optional[str] = None
-        self._tools_cache: list[dict] = []
-
-    def _parse_sse(self, text: str) -> dict | None:
-        """Parse SSE (Server-Sent Events) response body into JSON."""
-        for line in text.split("\n"):
-            if line.startswith("data: "):
-                data_str = line[6:]
-                try:
-                    return json.loads(data_str)
-                except json.JSONDecodeError:
-                    continue
+def _resolve_headers(headers):
+    """解析 headers 中的 ${ENV_VAR} 占位符，从环境变量取值（避免硬编码密钥）。"""
+    if not headers:
         return None
+    resolved = {}
+    for k, v in headers.items():
+        if isinstance(v, str) and v.startswith("${") and v.endswith("}"):
+            v = os.getenv(v[2:-1], "")
+        resolved[k] = v
+    return resolved
 
-    def _rpc(self, method: str, params: dict | None = None) -> dict:
-        """Send a JSON-RPC request to the MCP server (supports SSE responses)."""
-        import requests
 
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": method,
-            "params": params or {},
-        }
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        }
-        if self.session_id:
-            headers["Mcp-Session-Id"] = self.session_id
+def _build_transport(name: str):
+    """按配置构建 MCP transport 异步上下文管理器。
 
+    支持 transport:
+    - "stdio": 本地进程（npx/node 启动的 MCP server）
+    - "sse": 旧版 HTTP+SSE
+    - "streamable_http": 新版标准 HTTP（默认）
+    """
+    cfg = MCP_SERVERS[name]
+    transport = cfg.get("transport", "streamable_http")
+
+    if transport == "stdio":
+        from mcp import StdioServerParameters
+        from mcp.client.stdio import stdio_client
+        params = StdioServerParameters(command=cfg["command"], args=cfg.get("args", []))
+        return stdio_client(params)
+
+    url = cfg["url"]
+    headers = _resolve_headers(cfg.get("headers"))
+    if transport == "sse":
+        from mcp.client.sse import sse_client
+        return sse_client(url, headers=headers)
+    from mcp.client.streamable_http import streamable_http_client
+    if headers:
+        import httpx
+        return streamable_http_client(url, http_client=httpx.AsyncClient(headers=headers))
+    return streamable_http_client(url)
+
+
+async def _call_tool_async(server: str, tool_name: str, arguments: dict) -> str:
+    """连接外部 MCP server 并调用工具，返回文本结果。"""
+    from mcp import ClientSession
+    transport = _build_transport(server)
+    async with transport as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            result = await session.call_tool(tool_name, arguments or {})
+    return _format_tool_result(result)
+
+
+async def _list_tools_async(server: str) -> list:
+    """连接外部 MCP server 并列出其工具。"""
+    from mcp import ClientSession
+    transport = _build_transport(server)
+    async with transport as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            result = await session.list_tools()
+            return list(result.tools)
+
+
+def _format_tool_result(result) -> str:
+    """把 CallToolResult.content 转成纯文本。"""
+    texts = []
+    for item in result.content:
+        text = getattr(item, "text", None)
+        texts.append(text if text is not None else str(item))
+    return "\n".join(texts) if texts else "MCP 工具未返回内容"
+
+
+def _run_async(coro, timeout: float = 60.0):
+    """在独立线程的事件循环里运行协程，规避调用方（FastAPI）事件循环冲突。
+
+    官方 mcp client 是异步的，而 LangChain @tool 是同步的；且同步 tool 会在
+    FastAPI 事件循环线程内被调用，直接 asyncio.run() 会抛 "cannot be called
+    from a running event loop"。因此每次调用放到独立线程 + 独立事件循环里执行。
+    """
+    result = {}
+    error = {}
+
+    def _runner():
         try:
-            resp = requests.post(self.url, json=payload, headers=headers, timeout=30)
-            # Extract session ID from response header
-            sid = resp.headers.get("Mcp-Session-Id") or resp.headers.get("mcp-session-id")
-            if sid:
-                self.session_id = sid
-            if resp.status_code == 200:
-                content_type = resp.headers.get("content-type", "")
-                if "text/event-stream" in content_type:
-                    # MCP streamable_http SSE format
-                    parsed = self._parse_sse(resp.text)
-                    if parsed:
-                        return parsed
-                    return {"error": "Failed to parse SSE response"}
-                else:
-                    return resp.json()
-            else:
-                logger.warning(f"MCP RPC {method} → HTTP {resp.status_code}")
-                # Try SSE parsing even on non-200
-                parsed = self._parse_sse(resp.text)
-                if parsed:
-                    return parsed
-                return {"error": resp.text}
-        except requests.RequestException as e:
-            logger.warning(f"MCP RPC {method} → {e}")
-            return {"error": str(e)}
+            result["value"] = asyncio.run(coro)
+        except Exception as e:  # noqa: BLE001
+            error["value"] = e
 
-    def connect(self) -> bool:
-        """Initialize MCP session."""
-        result = self._rpc("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "JobSense", "version": "2.0"},
-        })
-        if "error" not in result:
-            # Send initialized notification
-            self._rpc("notifications/initialized", {})
-            return True
-        return False
-
-    def list_tools(self) -> list[dict]:
-        """Discover tools from the MCP server."""
-        if self._tools_cache:
-            return self._tools_cache
-
-        result = self._rpc("tools/list", {})
-        if "result" in result and "tools" in result["result"]:
-            self._tools_cache = result["result"]["tools"]
-        return self._tools_cache
-
-    def call_tool(self, tool_name: str, arguments: dict) -> str:
-        """Call an MCP tool and return its result as a string."""
-        result = self._rpc("tools/call", {
-            "name": tool_name,
-            "arguments": arguments,
-        })
-        if "result" in result:
-            content = result["result"].get("content", [])
-            if isinstance(content, list):
-                texts = []
-                for item in content:
-                    if isinstance(item, dict):
-                        texts.append(item.get("text", str(item)))
-                    else:
-                        texts.append(str(item))
-                return "\n".join(texts)
-            return str(content)
-        if "error" in result:
-            return f"MCP工具调用失败: {result['error']}"
-        return "MCP工具未返回内容"
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    if t.is_alive():
+        raise TimeoutError(f"MCP 调用超时（>{timeout}s）")
+    if "value" in error:
+        raise error["value"]
+    return result["value"]
 
 
-# ── MCP → LangChain Tool Factory ─────────────────
+# ── LangChain Tools ───────────────────────────────
 
 class MCPToolInput(BaseModel):
-    """Generic input for any single MCP tool."""
-    server: str = Field(description="MCP服务器名称，如'12306'")
+    """通用 MCP 工具入参。"""
+    server: str = Field(description="MCP服务器名称")
     tool_name: str = Field(description="要调用的工具名称")
-    arguments: str = Field(description="JSON格式的工具参数，如'{\"from\":\"北京\",\"to\":\"上海\"}'")
-
-
-# Cache of connected clients
-_mcp_clients: dict[str, MCPClient] = {}
-
-
-def _get_client(server_name: str) -> Optional[MCPClient]:
-    """Get or create an MCP client for the given server."""
-    if server_name not in MCP_SERVERS:
-        return None
-
-    cfg = MCP_SERVERS[server_name]
-    if not cfg.get("enabled", True):
-        return None
-
-    if server_name not in _mcp_clients:
-        client = MCPClient(cfg["url"])
-        if client.connect():
-            _mcp_clients[server_name] = client
-            tools = client.list_tools()
-            logger.info(f"MCP [{server_name}]: {len(tools)} tools discovered")
-        else:
-            logger.warning(f"MCP [{server_name}]: connection failed")
-            _mcp_clients[server_name] = client  # cache even failed
-
-    return _mcp_clients[server_name]
+    arguments: str = Field(description='JSON格式的工具参数，如 {"url":"https://example.com"}')
 
 
 @tool(args_schema=MCPToolInput)
 def call_mcp_tool(server: str, tool_name: str, arguments: str = "{}") -> str:
-    """调用外部MCP服务（自动重试3次，失败则降级提示）。"""
-    # try up to 3 times
-    import time
+    """调用外部 MCP 服务。
+
+    当前可用服务:
+    - ShuidiRisk: 企业司法风险/大数据查询（28 个工具，入参 company_name 必填）
+      · 常用: search_risk(综合风险) / search_lawsuit(诉讼) / search_punishment(行政处罚)
+              search_bankruptcy(破产) / get_legal_risk_count(风险统计)
+    - playwright: 微软浏览器自动化（24 个工具）
+      · 常用: browser_navigate(打开网页) / browser_click(点击) / browser_type(输入)
+              browser_snapshot(页面结构) / browser_take_screenshot(截图)
+
+    调用示例:
+      call_mcp_tool(server="ShuidiRisk", tool_name="search_risk", arguments='{"company_name":"公司名"}')
+      call_mcp_tool(server="playwright", tool_name="browser_navigate", arguments='{"url":"https://example.com"}')
+    """
+    if server not in MCP_SERVERS:
+        available = ", ".join(f"{k}({v['description']})" for k, v in MCP_SERVERS.items())
+        return f"未知的 MCP 服务 '{server}'。可用服务: {available}"
+
+    if not MCP_SERVERS[server].get("enabled", True):
+        return f"MCP 服务 '{server}' 未启用。"
+
+    try:
+        args = json.loads(arguments) if isinstance(arguments, str) else (arguments or {})
+    except json.JSONDecodeError:
+        return f"参数格式错误: {arguments}。请使用 JSON 格式。"
+
     last_err = None
     for attempt in range(1, 4):
         try:
-            return _call_mcp_tool_impl(server, tool_name, arguments)
+            return _run_async(_call_tool_async(server, tool_name, args))
         except Exception as e:
             last_err = e
+            logger.warning(f"MCP {server}/{tool_name} 第{attempt}次调用失败: {e}")
             if attempt < 3:
                 time.sleep(0.5 * attempt)
     return f"[MCP {server}/{tool_name} 暂时不可用 (重试3次失败): {last_err}]"
 
 
-def _call_mcp_tool_impl(server: str, tool_name: str, arguments: str = "{}") -> str:
-    """
-    调用外部MCP服务。当前可用服务器:
-
-    - JobTools: 求职工具 + 浏览器多步操控。工具:
-      · get_interview_tips: 面试建议 (role, level)
-      · calculate_after_tax: 税后计算 (monthly_salary, city)
-      · get_company_info: 公司信息 (company_name)
-      · browser_action: 浏览器多步操控。action类型:
-        - navigate: 打开网址 (url)
-        - click: 点击按钮 (text或selector)
-        - type: 输入文字 (text)
-        - press: 按键 (key, 如Enter)
-        - get_content: 获取页面文字
-        - screenshot: 截图看页面
-        - wait: 等待 (seconds, reason如"等待用户扫码")
-        - search: Bing搜索 (query)
-    多步骤任务: 逐步调用browser_action完成复杂流程(打开→登录→等待扫码→提问→返回)
-
-    使用示例:
-    - server='JobTools', tool_name='browser_action', arguments='{"action":"navigate","url":"https://chat.deepseek.com"}'
-    - server='JobTools', tool_name='browser_action', arguments='{"action":"click","text":"登录"}'
-    - server='JobTools', tool_name='browser_action', arguments='{"action":"wait","seconds":20,"reason":"等待用户扫码登录"}'
-    - server='JobTools', tool_name='browser_action', arguments='{"action":"get_content"}'
-    """
-    if server not in MCP_SERVERS:
-        available = ", ".join(f"{k}({v['description']})" for k, v in MCP_SERVERS.items())
-        return f"未知的MCP服务 '{server}'。可用服务: {available}"
-
-    client = _get_client(server)
-    if client is None:
-        return f"MCP服务 '{server}' 未配置或未启用。"
-
-    # Parse arguments
-    try:
-        args_dict = json.loads(arguments) if isinstance(arguments, str) else arguments
-    except json.JSONDecodeError:
-        return f"参数格式错误: {arguments}。请使用JSON格式。"
-
-    result = client.call_tool(tool_name, args_dict)
-    if not result:
-        return f"MCP工具 '{tool_name}' 执行完成，但无返回内容。"
-
-    return result
-
-
 @tool
 def list_mcp_services(query: str = "") -> str:
-    """
-    列出当前可用的MCP外部服务及其工具。
-    当用户想了解系统支持哪些外部服务时使用。
-    """
+    """列出当前可用的 MCP 外部服务及其工具。"""
     lines = ["## 可用的 MCP 外部服务\n"]
-
     for name, cfg in MCP_SERVERS.items():
         if not cfg.get("enabled", True):
             continue
         lines.append(f"### {name} — {cfg['description']}")
-        lines.append(f"连接: {cfg['url']}")
-        lines.append(f"协议: {cfg['transport']}")
-
-        # Try to get tools list
-        client = _get_client(name)
-        if client and client._tools_cache:
-            lines.append("工具列表:")
-            for t in client._tools_cache:
-                desc = t.get("description", "")[:80]
-                lines.append(f"  · {t['name']}: {desc}")
+        if cfg.get("transport") == "stdio":
+            lines.append(f"连接: {cfg.get('command')} {' '.join(cfg.get('args', []))}")
         else:
-            lines.append("（服务器暂未连接，工具列表不可用）")
+            lines.append(f"连接: {cfg.get('url', '')}")
+        lines.append(f"协议: {cfg.get('transport', 'streamable_http')}")
+        try:
+            tools = _run_async(_list_tools_async(name))
+            lines.append("工具列表:")
+            for t in tools:
+                desc = (t.description or "")[:80]
+                lines.append(f"  · {t.name}: {desc}")
+        except Exception as e:
+            lines.append(f"（服务器暂未连接: {e}）")
         lines.append("")
 
-    if not lines[1:]:
-        return "当前没有配置MCP服务。"
-    return "\n".join(lines)
+    return "\n".join(lines) if len(lines) > 1 else "当前没有配置 MCP 服务。"
 
 
-# ═══════════════════════════════════════════════════
-#  Export
-# ═══════════════════════════════════════════════════
+# ── 导出 ─────────────────────────────────────────
 
 MCP_TOOLS = [call_mcp_tool, list_mcp_services]
