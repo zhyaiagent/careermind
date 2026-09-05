@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
-![Tests](https://img.shields.io/badge/tests-40%20passed-green)
+![Tests](https://img.shields.io/badge/tests-36%20passed-green)
 
 ---
 
@@ -17,8 +17,8 @@ CareerMind 是一个基于 LangGraph 的 AI Agent 系统，集成了 **RAG 混�
 **核心亮点：**
 - **混合 Agent 架构**：ReAct（简单任务）+ Plan-Execute（复杂任务）+ Reflection（自我反思）
 - **混合检索管线**：Vector + BM25 + RRF + BGE-Reranker 四阶段检索
-- **混合工具架构**：6 个内置函数（低延迟） + 2 个 MCP 桥接工具（远程服务）
-- **浏览器自动化**：Playwright + Chromium，支持导航、点击、输入、搜索
+- **混合工具架构**：6 个内置函数（function calling） + 2 个 MCP 桥接工具（外接服务）
+- **浏览器自动化**：外接微软 Playwright MCP，支持导航、点击、输入、截图等 24 个操作
 - **流式输出**：SSE 协议，token 级实时渲染
 
 ---
@@ -32,15 +32,15 @@ CareerMind 是一个基于 LangGraph 的 AI Agent 系统，集成了 **RAG 混�
 | Agent | **LangGraph** | 混合编排 (ReAct + Plan-Execute + Reflection) |
 | LLM | DeepSeek Chat API | 支持切换 Qwen / GLM-4 |
 | 嵌入 | **BGE-M3** | 1024 维，本地 CPU，中英双语 |
-| 向量库 | **Chroma** | 511 文档，持久化存储 |
+| 向量库 | **Chroma** | 持久化存储 |
 | 关键词 | **BM25** + jieba | 中文分词，稀疏检索 |
 | 精排 | **BGE-Reranker-v2-m3** | 交叉编码器，提升精确率 25% |
 | 数据库 | **PostgreSQL 16** | SQLAlchemy ORM，支持切换 SQLite |
-| 浏览器 | **Playwright** + Chromium | headless=False，用户可见 |
-| MCP 协议 | 自建 JSON-RPC + SSE Bridge | 跨进程工具调用 |
+| 浏览器 | **Playwright MCP**（外部） | 24 个浏览器自动化工具 |
+| MCP | **官方 mcp 包** | 外接 ShuidiRisk + Playwright |
 | 评测 | P@5 / R@5 / MRR / NDCG@5 | 消融实验对比 4 种策略 |
-| CI/CD | **GitHub Actions** | push 自动跑 40 个测试 |
-| 容器化 | **Docker Compose** | PostgreSQL + MCP + API + React |
+| CI/CD | **GitHub Actions** | push 自动跑 36 个测试 |
+| 容器化 | **Docker Compose** | PostgreSQL + API |
 
 ---
 
@@ -56,7 +56,6 @@ CareerMind 是一个基于 LangGraph 的 AI Agent 系统，集成了 **RAG 混�
                          │                      │
                          │  /chat  /chat/stream │  ← SSE 流式输出
                          │  /upload            │  ← 文档上传入库
-                         │  /browser           │  ← 浏览器直控
                          │  /health            │  ← 健康检查
                          └──────────┬──────────┘
                                     │
@@ -99,31 +98,24 @@ CareerMind 是一个基于 LangGraph 的 AI Agent 系统，集成了 **RAG 混�
                    │                                  │
                    │  ┌────────────┐  ┌────────────┐ │
                    │  │ 内置函数(6) │  │ MCP桥接(2) │ │
-                   │  │────────────│  │────────────│ │
-                   │  │search_kb   │  │call_mcp    │ │
-                   │  │search_web  │  │list_mcp    │ │
-                   │  │query_salary│  │     │      │ │
-                   │  │analyze_jd  │  │ JSON-RPC  │ │
-                   │  │match_skills│  │  + SSE     │ │
-                   │  │calendar    │  │     │      │ │
-                   │  │            │  │     ▼      │ │
-                   │  │ 进程内执行  │  │ MCP Server │ │
-                   │  │ <10ms 延迟 │  │   :9020   │ │
-                   │  └────────────┘  │           │ │
-                   │                  │ browser   │ │
-                   │  ┌────────────┐  │ _action   │ │
-                   │  │ 浏览器拦截  │  │ interview │ │
-                   │  │────────────│  │ _tips     │ │
-                   │  │Playwright  │  │ after_tax │ │
-                   │  │Chromium    │  │ company   │ │
-                   │  │实时弹窗    │  │ _info     │ │
-                   │  └────────────┘  └────────────┘ │
+                   │  │ search_kb  │  │ call_mcp   │ │
+                   │  │ search_web │  │ list_mcp   │ │
+                   │  │ query_sal  │  │    │       │ │
+                   │  │ analyze_jd │  │ 官方 mcp   │ │
+                   │  │ match_skil │  │ client     │ │
+                   │  │ calendar   │  │    │       │ │
+                   │  │ (func call)│  │    ▼       │ │
+                   │  └────────────┘  │ 外部服务   │ │
+                   │                  │ ShuidiRisk │ │
+                   │                  │ Playwright │ │
+                   │                  │ 28+24 工具 │ │
+                   │                  └────────────┘ │
                    └─────────────────────────────────┘
                                     │
                          ┌──────────▼──────────┐
                          │      记忆层           │
                          │  短期: 10轮对话历史    │
-                         │  长期: Chroma 511 docs │
+                         │  长期: Chroma 知识库  │
                          │        PostgreSQL 薪资 │
                          │        BM25 索引       │
                          └───────────────────────┘
@@ -178,7 +170,7 @@ Synthesizer → 整合结果 → 结构化回答
 文档上传 → 解析(PyMuPDF+pdfplumber+python-docx)
          → 分块(200字, overlap 30)
          → Embedding(BGE-M3, 1024维)
-         → Chroma 向量库 (511 docs)
+         → Chroma 向量库
               │
 用户查询 ─────┤
               ├── Vector Search (语义) → Top-15
@@ -288,9 +280,8 @@ python scripts/rebuild_kb.py         # 知识库 (243 chunks)
 
 ### 5. 启动服务
 ```bash
-python scripts/mcp_server.py         # Terminal 1: MCP (:9020)
-python -m api.main                   # Terminal 2: API (:8001)
-cd frontend && npm run dev           # Terminal 3: React (:3000)
+python -m api.main                   # Terminal 1: API (:8001)
+cd frontend && npm run dev           # Terminal 2: React (:3000)
 ```
 
 ### Docker 一键启动
@@ -310,10 +301,9 @@ careermind/
 │   └── vite.config.js
 ├── agent/                       # Agent 编排 (14 → 6 files)
 │   ├── graph.py                 # 核心: 混合编排 + Reflection
-│   ├── state.py / memory.py     # 状态 + 记忆
 │   └── tools/                   # 8 个 LangChain @tool
-│       ├── tools.py             # 6 内置工具 (带重试)
-│       ├── mcp_bridge.py        # MCP JSON-RPC 桥接
+│       ├── tools.py             # 6 内置工具 (function calling)
+│       ├── mcp_bridge.py        # 官方 mcp client 桥接外部服务
 │       └── web_search.py        # Tavily 联网搜索
 ├── core/                        # 核心能力 (10 files)
 │   ├── retrieval.py             # 混合检索管线
@@ -326,20 +316,20 @@ careermind/
 │   ├── hallucination_guard.py   # 幻觉检测
 │   └── evaluator.py             # RAGAS 评估
 ├── api/                         # FastAPI (5 files)
-│   ├── main.py                  # 入口 + /browser 端点
+│   ├── main.py                  # 入口（组件装配 + 路由注册）
 │   ├── schemas.py               # Pydantic 模型
 │   └── routes/
-│       ├── chat.py              # 对话 + 浏览器执行
+│       ├── chat.py              # 对话 + SSE 流式
 │       ├── upload.py            # 文档上传
 │       └── evaluation.py        # 评测触发
-├── scripts/                     # (5 files)
-│   ├── mcp_server.py            # MCP Server (4 工具)
+├── scripts/                     # 数据管道
 │   ├── build_salary_db.py       # PostgreSQL 薪资
 │   ├── rebuild_kb.py            # 知识库重建
 │   ├── ablation_study.py        # 检索消融实验
-│   └── crawl_jds.py             # JD 爬虫
-├── tests/                       # 40 个自动化测试
-├── docker-compose.yml           # PostgreSQL + MCP + API
+│   ├── crawl_real_jds.py        # JD 爬虫
+│   └── pipeline.py              # 一键数据管道
+├── tests/                       # 36 个自动化测试
+├── docker-compose.yml           # PostgreSQL + API
 ├── Dockerfile                   # 单服务镜像
 ├── .pre-commit-config.yaml      # 代码规范
 ├── requirements.lock            # 依赖锁定
@@ -352,12 +342,12 @@ careermind/
 
 | 能力 | 实现 |
 |------|------|
-| 测试 | 40 个 pytest，覆盖检索/生成/Agent/工具/幻觉检测 |
+| 测试 | 36 个 pytest，覆盖检索/生成/Agent/工具/幻觉检测 |
 | CI | GitHub Actions，push 自动跑 Python 3.11 |
 | 代码规范 | pre-commit: ruff 格式化 + YAML/JSON 检查 |
 | 依赖管理 | requirements.lock 精确锁定版本 |
 | 配置分离 | .env + config.py |
-| 容器化 | Docker Compose (PG + MCP + API + React) |
+| 容器化 | Docker Compose (PostgreSQL + API) |
 | 日志 | logging 模块，按级别输出 |
 | 错误处理 | 工具层 3 次重试 + 降级 + API 层全局异常捕获 |
 | 模块化 | 6 层分离 (frontend/api/agent/core/scripts/tests) |
