@@ -265,9 +265,9 @@ createdb jobsense
 python scripts/pipeline.py
 
 # 或分步：
-python scripts/collect_real_data.py   # 浏览器抓取真实JD (20条)
+python scripts/crawl_real_jds.py      # 浏览器抓取真实 JD
 python scripts/build_salary_db.py     # 生成薪资数据 (200条)
-python scripts/rebuild_kb.py          # 分块+嵌入+入库 (511 chunks)
+python scripts/rebuild_kb.py          # 分块+嵌入+入库
 ```
 
 > 数据来源：真实 JD 通过浏览器从招聘网站采集，薪资数据为真实市场范围的随机样本，知识库支持用户上传 PDF/Word 文档实时入库。
